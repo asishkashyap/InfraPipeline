@@ -1,0 +1,154 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: TerraformInit
+  displayName: "Terraform Tool Install & Initialization"
+  jobs:
+  - job: TerraformInstall
+    displayName: "Terraform Installer"
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+  - job: TerraformInitialization
+    displayName: "Terraform Initialization"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Class5-modules/parent_module'
+        backendServiceArm: 'azureportal'
+        backendAzureRmResourceGroupName: 'rg-terraformstate'
+        backendAzureRmStorageAccountName: 'devops218912'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'dhondhu.tfstate'
+
+- stage: TerraformValidateSecurityScan
+  displayName: "Terraform Validate & Security Scan"
+  dependsOn: TerraformInit
+  jobs: 
+  - job: TerraformInstall
+    displayName: "Terraform Installer"
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+  - job: TerraformInitialization
+    displayName: "Terraform Initialization"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Class5-modules/parent_module'
+        backendServiceArm: 'azureportal'
+        backendAzureRmResourceGroupName: 'rg-terraformstate'
+        backendAzureRmStorageAccountName: 'devops218912'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'dhondhu.tfstate'
+  
+  - job: TerraformValidate
+    displayName: "Terraform Validate"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+  
+  - job: tfsec
+    displayName: "Security Code Scan"
+    steps: 
+    - task: tfsec@1
+      inputs:
+        version: 'v1.26.0'
+        dir: '$(System.DefaultWorkingDirectory)/Class5-modules'
+
+
+- stage: TerraformPlan
+  displayName: "Terraform Plan"
+  dependsOn: TerraformValidateSecurityScan
+  jobs:
+  - job: TerraformInstall
+    displayName: "Terraform Installer"
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+  - job: TerraformInitialization
+    displayName: "Terraform Initialization"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Class5-modules/parent_module'
+        backendServiceArm: 'azureportal'
+        backendAzureRmResourceGroupName: 'rg-terraformstate'
+        backendAzureRmStorageAccountName: 'devops218912'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'dhondhu.tfstate'
+  
+  - job: RunningPlan
+    displayName: "Terraform Plan"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Class5-modules/parent_module'
+        environmentServiceNameAzureRM: 'azureportal'
+
+- stage: ManualValidation
+  displayName: "Wait for Approval"
+  dependsOn: TerraformPlan
+  jobs:
+  - job: WaitforApproval
+    displayName: "Waiting for approval"
+    pool : server
+    steps:
+    - task: ManualValidation@1
+      inputs:
+        instructions: 'Please Approve to proceed for Infra deployment'
+
+- stage: TerraformApply
+  displayName: "Terraform Apply"
+  dependsOn: ManualValidation
+  jobs:
+  - job: TerraformInstall
+    displayName: "Terraform Installer"
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+  - job: TerraformInitialization
+    displayName: "Terraform Initialization"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Class5-modules/parent_module'
+        backendServiceArm: 'azureportal'
+        backendAzureRmResourceGroupName: 'rg-terraformstate'
+        backendAzureRmStorageAccountName: 'devops218912'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'dhondhu.tfstate'
+
+  - job: TerraformApply
+    displayName: "Infra Deploy"
+    steps:
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        environmentServiceNameAzureRM: 'azureportal'
+
