@@ -13,4 +13,4 @@
  <br>
 
  ### Git Rebase Info
- - Git rebase maintains the git history by creating new history.
+ - Git rebase maintains the git history by producing new history.
